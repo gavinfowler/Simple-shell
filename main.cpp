@@ -1,5 +1,6 @@
 //main.cpp
 #include <string>
+#include <string.h>
 #include <vector>
 #include <chrono>
 #include <iostream>
@@ -14,9 +15,13 @@
 #include <dirent.h>
 
 
-/*
-void  parse(char *line, char **argv)
+
+void  parse(std::string string, char **argv)
 {
+	char *line = new char[string.length()+1];
+	//std::cout << "here\n";
+	strcpy(line, string.c_str());
+	//std::cout << "here2\n";
 	while (*line != '\0') {
 		while (*line == ' ' || *line == '\t' || *line == '\n')
         		*line++ = '\0';
@@ -25,10 +30,13 @@ void  parse(char *line, char **argv)
 			line++;
 	}
         *argv = '\0'; 
+	//std::cout << "here3\n";
+	//delete [] line;
+	//line = NULL;
 }
-*/
+
 	
-void  execute(char **argv)
+void execute(char **argv)
 {
 	pid_t pid;
 	int status;
@@ -38,8 +46,10 @@ void  execute(char **argv)
 		exit(1);
 	}
         else if (pid == 0) {        
-		if (execvp(*argv, argv) < 0) {						                    		printf("*** ERROR: exec failed\n");
-		    exit(1);
+		if (execvp(*argv, argv) < 0) {
+			std::cout << argv <<std::endl;
+			printf("*** ERROR: exec failed\n");
+			exit(1);
 		}
 	}
 	else { 
@@ -100,7 +110,10 @@ int main(void){
 	while(!quitting){
 		std::cout << "[cmd]: ";
 		std::getline (std::cin, input);
-		char *charinput = const_cast<char *>(input.c_str());
+		char *charinput[input.length()+1];
+		//std::cout << "preparse\n";
+		parse(input, charinput);
+		//std::cout << "postparse\n";
 		auto before = std::chrono::high_resolution_clock::now();
 		if (input == "exit"){
 			quitting = true;
@@ -165,8 +178,9 @@ int main(void){
 
 		}
 		else { 
-			execute(&charinput);
-			std::cout << "invalid command\n";
+			//std::cout <<charinput<<std::endl;
+			execute(charinput);
+			//std::cout << "invalid command\n";
 		}
 		auto after = std::chrono::high_resolution_clock::now();
 		dur = after - before;
