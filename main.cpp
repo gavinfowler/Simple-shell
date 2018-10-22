@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <string.h>
 #include <dirent.h>
+#include <time.h>
 
 
 void  parse(std::string string, char **argv){
@@ -68,7 +69,6 @@ int getdir (std::string dir, std::vector<std::string> &files){
 }
 
 char pathname[MAXPATHLEN];
-std::chrono::duration<double> dur; 
 
 std::vector<std::string> split (const std::string &s, char delim) {
 	std::vector<std::string> result;
@@ -87,14 +87,24 @@ std::vector<std::string> split (const std::string &s, char delim) {
 }    
 
 int main(void){
+	/*stuff for living time*/
 	struct timeval tv[2]; //need 2 for when started program and when checking difference
 	gettimeofday (&tv[0], NULL);
+	/*stuff for running time*/
+	clock_t t;
+	t = clock();
+	/*stuff for history and ^ # */
 	std::vector<std::string> history;
-	std::chrono::seconds duration;
-	std::vector<std::string> arguments;
 	int counter = 0;
+	/*stuff for ptime*/
+	std::chrono::duration<double> dur; 
+	std::chrono::seconds duration;
+	/*stuff for execvp*/
+	std::vector<std::string> arguments;
+	/*stuff for general running*/
 	bool quitting = false;
 	std::string input;
+
 	while(!quitting){
 		std::cout << "[cmd]: ";
 		std::getline (std::cin, input);
@@ -124,10 +134,16 @@ theInput:
 			int seconds = diff;
 			int minutes = seconds / 60;
 			int hours = minutes / 60;
-			std::cout << std::setw(2) << std::setfill('0') << int(hours) << ":" <<
+			std::cout <<"Living time: \n"
+				<< std::setw(2) << std::setfill('0') << int(hours) << ":" <<
 				std::setw(2) << std::setfill('0')  << int(minutes%60) << ":" <<
 				std::setw(2) << std::setfill('0') << int(seconds%60) << "\n";
 			quitting = false;
+		}
+		else if (input == "running_time"){
+			int running=clock()-t;
+			std::cout << "Running time:\n" 
+				<< ((float)running)/CLOCKS_PER_SEC <<std::endl;
 		}
 		else if (input == "history"){
 			std::cout << std::endl;
