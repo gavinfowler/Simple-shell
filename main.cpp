@@ -16,12 +16,9 @@
 
 
 
-void  parse(std::string string, char **argv)
-{
+void  parse(std::string string, char **argv){
 	char *line = new char[string.length()+1];
-	//std::cout << "here\n";
 	strcpy(line, string.c_str());
-	//std::cout << "here2\n";
 	while (*line != '\0') {
 		while (*line == ' ' || *line == '\t' || *line == '\n')
         		*line++ = '\0';
@@ -30,25 +27,20 @@ void  parse(std::string string, char **argv)
 			line++;
 	}
         *argv = '\0'; 
-	//std::cout << "here3\n";
-	//delete [] line;
-	//line = NULL;
 }
 
 	
-void execute(char **argv)
-{
+void execute(char **argv){
 	pid_t pid;
 	int status;
 
 	if ((pid = fork()) < 0) { 
-		printf("*** ERROR: forking child process failed\n");				
+		std::cout << "*** ERROR: forking child process failed\n";			
 		exit(1);
 	}
         else if (pid == 0) {        
 		if (execvp(*argv, argv) < 0) {
-			std::cout << argv <<std::endl;
-			printf("*** ERROR: exec failed\n");
+			std::cout <<"ERROR: Invalid Input, Command not recognized\n";
 			exit(1);
 		}
 	}
@@ -59,12 +51,12 @@ void execute(char **argv)
 	}
 }
 
-int getdir (std::string dir, std::vector<std::string> &files)
-{
+int getdir (std::string dir, std::vector<std::string> &files){
 	DIR *dp;
 	struct dirent *dirp;
 	if((dp  = opendir(dir.c_str())) == NULL) {
-		std::cout << "Error(" << errno << ") opening " << dir << std::endl;
+		std::cout << "ERROR: " << strerror(errno) << ", attemped to open " 
+			<< dir << std::endl;
 		return errno;
 	}
         while ((dirp = readdir(dp)) != NULL) {
@@ -94,26 +86,22 @@ std::vector<std::string> split (const std::string &s, char delim) {
 }    
 
 int main(void){
-	//std::cout << argc <<std::endl;
 	std::vector<std::string> history;
 	std::chrono::seconds duration;
 	std::vector<std::string> arguments;
-	/**
-	for (int i=0;i<argc;i++){
-		std::string temp(argv[i]);
-		arguments.push_back(temp);
-		std::cout << i <<" : "<<arguments[i]<<std::endl;
-	}
-	**/
+	int counter = 0;
 	bool quitting = false;
 	std::string input;
 	while(!quitting){
 		std::cout << "[cmd]: ";
 		std::getline (std::cin, input);
+		counter = 0;
+/******************JUMPS TO HERE******************************/
+theInput:
+/******************JUMPS TO HERE******************************/
+		history.push_back(input);
 		char *charinput[input.length()+1];
-		//std::cout << "preparse\n";
 		parse(input, charinput);
-		//std::cout << "postparse\n";
 		auto before = std::chrono::high_resolution_clock::now();
 		if (input == "exit"){
 			quitting = true;
@@ -121,28 +109,16 @@ int main(void){
 		}
 
 		char delim = ' ';
-		/*
-		std::string command = input.substr(0, input.find(del));
-		std::cout << "command:" << command << std::endl;
-		std::string args = input.substr(input.find(del), input.length());
-		std::cout << "here\n";
-		char *arg = &input[0u];
-		*/
 		arguments = split(input, delim);
-		/*
-		for (auto const& c : arguments)
-    			std::cout << c << ' ';
-		std::cout << std::endl;	
-		std::cout << "command:"<<arguments[0]<<std::endl;
-		*/
                 if (input == "ptime"){
-			std::cout << "Time spent executing child processes: "<< dur.count() <<" seconds\n";
+			std::cout << "Time spent executing child processes: "<< dur.count() 
+				<<" seconds\n";
 			quitting = false;
 		}
 		else if (input == "history"){
 			std::cout << std::endl;
 			for (unsigned int i=1;i<=history.size();i++)
-				std::cout << i << " : " << history[i] << std::endl;
+				std::cout << i << " : " << history[i-1] << std::endl;
 			std::cout << std::endl;
 			quitting = false;
 		}
@@ -161,7 +137,7 @@ int main(void){
 			quitting = false;
 		}
 		else if (input[0]=='^'){
-			//do stuff here
+			counter++;
 			std::string delimiter = " ";
 			std::string token = input.substr(input.find(delimiter)+1, input.length());
 			int temp = 0;
@@ -173,18 +149,36 @@ int main(void){
 				std::cout << "Input was not a number.\n";
 				isAnInt = false;
 			}
-			//std::cout << "token:" << token <<std::endl;
-			std::cout << "token int:" << temp << std::endl;
+			if(counter>10){
+				std::cout << "ERROR: Infinite loop detected\n";
+				isAnInt = false;
+			}
+
+			if (isAnInt){
+				int num = history.size()-temp;
+				try{
+					input = history[num-1];
+				}
+				catch(...){
+					std::cout << "ERROR: Invalid number choice\n";
+					/******JUMP STATEMENT******/
+					goto theInput;
+					/******JUMP STATEMENT******/
+				}
+				std::cout <<"[cmd]: "<< input << "\n";
+				auto after = std::chrono::high_resolution_clock::now();
+				dur = after - before;
+				/******JUMP STATEMENT******/
+				goto theInput;
+				/******JUMP STATEMENT******/
+			}
 
 		}
 		else { 
-			//std::cout <<charinput<<std::endl;
 			execute(charinput);
-			//std::cout << "invalid command\n";
 		}
 		auto after = std::chrono::high_resolution_clock::now();
 		dur = after - before;
-		history.push_back(input);
 	}
 	return 0;
 }
