@@ -47,9 +47,10 @@ void execute(char **argv){
 		}
 	}
 	else { 
-		while (wait(&status) != pid)
+		/* while (wait(&status) != pid)
 			;
-
+		*/
+		wait(&status);
 	}
 }
 
@@ -106,12 +107,16 @@ int main(void){
 	std::string input;
 
 	while(!quitting){
+/******************JUMPS TO HERE******************************/
+retry:
+/******************JUMPS TO HERE******************************/
+
 		std::cout << "[cmd]: ";
 		std::getline (std::cin, input);
 		counter = 0;
-/******************JUMPS TO HERE******************************/
+/******************JUMPS TO HERE1******************************/
 theInput:
-/******************JUMPS TO HERE******************************/
+/******************JUMPS TO HERE1******************************/
 		history.push_back(input);
 		char *charinput[input.length()+1];
 		parse(input, charinput);
@@ -145,6 +150,9 @@ theInput:
 			std::cout << "Running time:\n" 
 				<< ((float)running)/CLOCKS_PER_SEC <<std::endl;
 		}
+		else if (input == "pwd"){
+			std::cout << getcwd(NULL, 0) << std::endl;
+		}
 		else if (input == "history"){
 			std::cout << std::endl;
 			for (unsigned int i=1;i<=history.size();i++)
@@ -176,7 +184,7 @@ theInput:
 				temp = std::stoi(token);
 			}
 			catch(...) {
-				std::cout << "Input was not a number.\n";
+				std::cout << "ERROR: Input was not a number or was formatted incorectly. Format is '^ #' (the space is needed)\n";
 				isAnInt = false;
 			}
 			if(counter>10){
@@ -186,21 +194,27 @@ theInput:
 
 			if (isAnInt){
 				int num = history.size()-temp;
+				if (num<temp){
+					std::cout << "ERROR: Invalid number choice\n";
+					/******JUMP STATEMENT HERE******/
+					goto retry;
+					/******JUMP STATEMENT HERE******/
+				}					
 				try{
 					input = history[num-1];
 				}
 				catch(...){
 					std::cout << "ERROR: Invalid number choice\n";
-					/******JUMP STATEMENT******/
+					/******JUMP STATEMENT HERE1******/
 					goto theInput;
-					/******JUMP STATEMENT******/
+					/******JUMP STATEMENT HERE1******/
 				}
 				std::cout <<"[cmd]: "<< input << "\n";
 				auto after = std::chrono::high_resolution_clock::now();
 				dur = after - before;
-				/******JUMP STATEMENT******/
+				/******JUMP STATEMENT HERE1******/
 				goto theInput;
-				/******JUMP STATEMENT******/
+				/******JUMP STATEMENT HERE1******/
 			}
 
 		}
