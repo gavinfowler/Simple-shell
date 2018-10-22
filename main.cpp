@@ -1,19 +1,20 @@
 //main.cpp
 #include <string>
-#include <string.h>
 #include <vector>
 #include <chrono>
 #include <iostream>
 #include <sstream>
+#include <iomanip>
 #include <sys/types.h>
 #include <sys/dir.h>
 #include <sys/param.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
+#include <string.h>
 #include <dirent.h>
-
 
 
 void  parse(std::string string, char **argv){
@@ -86,6 +87,8 @@ std::vector<std::string> split (const std::string &s, char delim) {
 }    
 
 int main(void){
+	struct timeval tv[2]; //need 2 for when started program and when checking difference
+	gettimeofday (&tv[0], NULL);
 	std::vector<std::string> history;
 	std::chrono::seconds duration;
 	std::vector<std::string> arguments;
@@ -115,6 +118,17 @@ theInput:
 				<<" seconds\n";
 			quitting = false;
 		}
+		else if (input == "living_time"){
+			gettimeofday (&tv[1], NULL);
+			int diff = ((tv[1].tv_sec - tv[0].tv_sec));
+			int seconds = diff;
+			int minutes = seconds / 60;
+			int hours = minutes / 60;
+			std::cout << std::setw(2) << std::setfill('0') << int(hours) << ":" <<
+				std::setw(2) << std::setfill('0')  << int(minutes%60) << ":" <<
+				std::setw(2) << std::setfill('0') << int(seconds%60) << "\n";
+			quitting = false;
+		}
 		else if (input == "history"){
 			std::cout << std::endl;
 			for (unsigned int i=1;i<=history.size();i++)
@@ -125,7 +139,7 @@ theInput:
 		else if (input == "ls"){
 			std::string cwd = getcwd(pathname, MAXPATHLEN);
 			std::cout << cwd << std::endl;
-
+			
 			std::string dir = std::string(".");
 			std::vector<std::string> files = std::vector<std::string>();
 
