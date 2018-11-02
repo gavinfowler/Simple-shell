@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
 #include <sys/types.h>
 #include <sys/dir.h>
 #include <sys/param.h>
@@ -60,6 +61,10 @@ theInput:
 		history.push_back(input);
 		char *charinput[input.length()+1];
 		parse(input, charinput);
+		char *charinputFull = new char[input.length()+1];
+		std::cout << "here\n";
+		strcpy(charinputFull, input.c_str());
+		std::cout << "here\n";
 		auto before = std::chrono::high_resolution_clock::now();
 		
 /******************EXITING******************************/
@@ -178,10 +183,12 @@ theInput:
 
 		}
 		else { 
-			execute(charinput);
+			std::cout << "here\n";
+			execute(&charinputFull);
 		}
 		auto after = std::chrono::high_resolution_clock::now();
 		dur = after - before;
+		delete charinputFull;
 	}
 	return 0;
 }
@@ -202,15 +209,18 @@ void  parse(std::string string, char **argv){
 void execute(char **argv){
 	pid_t pid;
 	int status;
-	/*
+	
 	std::string input = std::string(*argv);
+	//std::cout << "String: " << input << std::endl;
+	input.erase(std::remove(input.begin(), input.end(), ' '), input.end());
+	//std::cout << "String: " << input << std::endl;
 	std::string delimiter = "|";
 	std::string tokenBefore = input.substr(0,input.find(delimiter));
 	std::string tokenAfter = input.substr(input.find(delimiter)+1, input.length());
-	std::cout << "TokenB: " + tokenBefore << std::endl;
+	std::cout << "String: " << input << std::endl;
+	std::cout << "TokenB: " << tokenBefore << std::endl;
 	std::cout << "TokenA: " << tokenAfter << std::endl;
 	return;
-	*/
 	if ((pid = fork()) < 0) { 
 		std::cout << "*** ERROR: forking child process failed\n";			
 		exit(1);
