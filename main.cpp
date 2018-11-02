@@ -118,7 +118,7 @@ theInput:
 			}
 			quitting = false;
 		}
-		else if (!(input.length() < 3) || 
+		else if (!(input.length() < 3) && 
 				(input[0] == 'c' && input[1] =='d' && input[3] ==' ')){
 			std::string delimiter = " ";
 			std::string token = input.substr(input.find(delimiter)+1, input.length());
@@ -130,7 +130,7 @@ theInput:
 			int ret = chdir(token.c_str());
 			//std::cout << getcwd(NULL, 0) << " : " << ret << std::endl;
 			if (ret < 0)
-				std::cout << "ERROR: " << strerror(errno) << std::endl;
+				std::cout << "CD ERROR: " << strerror(errno) << std::endl;
 			
 		}
 		else if (input[0]=='^'){
@@ -202,7 +202,15 @@ void  parse(std::string string, char **argv){
 void execute(char **argv){
 	pid_t pid;
 	int status;
-
+	/*
+	std::string input = std::string(*argv);
+	std::string delimiter = "|";
+	std::string tokenBefore = input.substr(0,input.find(delimiter));
+	std::string tokenAfter = input.substr(input.find(delimiter)+1, input.length());
+	std::cout << "TokenB: " + tokenBefore << std::endl;
+	std::cout << "TokenA: " << tokenAfter << std::endl;
+	return;
+	*/
 	if ((pid = fork()) < 0) { 
 		std::cout << "*** ERROR: forking child process failed\n";			
 		exit(1);
@@ -214,9 +222,6 @@ void execute(char **argv){
 		}
 	}
 	else { 
-		/* while (wait(&status) != pid)
-			;
-		*/
 		wait(&status);
 	}
 }
