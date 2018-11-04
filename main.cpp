@@ -23,11 +23,12 @@ void  parse(std::string string, char **argv);
 void execute(char **argv);
 int getdir (std::string dir, std::vector<std::string> &files);
 std::vector<std::string> split (const std::string &s, char delim);
-
+void signalHandler(int signum __attribute__((unused)));
 
 int main(void){
+	signal(SIGINT, signalHandler);
 	/*stuff for living time*/
-	struct timeval tv[2]; //need 2 for when started program and when checking difference
+	struct timeval tv[2]; //need for when started program and when checking difference
 	gettimeofday (&tv[0], NULL);
 	/*stuff for running time*/
 	clock_t t;
@@ -50,7 +51,7 @@ int main(void){
 retry:
 /******************JUMPS TO HERE******************************/
 
-		std::cout << "[cmd]: ";
+		std::cout << "[" << getcwd(NULL, 0) << "]: ";
 		std::getline (std::cin, input);
 		counter = 0;
 		
@@ -62,9 +63,7 @@ theInput:
 		char *charinput[input.length()+1];
 		parse(input, charinput);
 		char *charinputFull = new char[input.length()+1];
-		std::cout << "here\n";
 		strcpy(charinputFull, input.c_str());
-		std::cout << "here\n";
 		auto before = std::chrono::high_resolution_clock::now();
 		
 /******************EXITING******************************/
@@ -75,7 +74,7 @@ theInput:
 
 		char delim = ' ';
 		arguments = split(input, delim);
-        if (input == "ptime"){
+        	if (input == "ptime"){
 			std::cout << "Time spent executing child processes: "<< dur.count() 
 				<<" seconds\n";
 			quitting = false;
@@ -107,8 +106,6 @@ theInput:
 			std::cout << std::endl;
 			quitting = false;
 		}
-		else if (input == "yeet")
-			std::cout << "got 'em\n";
 		else if (input == "ls"){
 			std::string cwd = getcwd(pathname, MAXPATHLEN);
 			//std::cout << cwd << std::endl;
@@ -123,8 +120,7 @@ theInput:
 			}
 			quitting = false;
 		}
-		else if (!(input.length() < 3) && 
-				(input[0] == 'c' && input[1] =='d' && input[3] ==' ')){
+		else if (input[0] == 'c' && input[1] =='d' && input[2] ==' '){
 			std::string delimiter = " ";
 			std::string token = input.substr(input.find(delimiter)+1, input.length());
 			/*
@@ -183,14 +179,17 @@ theInput:
 
 		}
 		else { 
-			std::cout << "here\n";
-			execute(&charinputFull);
+			execute(charinput);
 		}
 		auto after = std::chrono::high_resolution_clock::now();
 		dur = after - before;
 		delete charinputFull;
 	}
 	return 0;
+}
+
+void signalHandler( int signum __attribute__((unused))) {
+	std::cout << "\nERROR: Exit with keyword \"exit\"\n";
 }
 
 void  parse(std::string string, char **argv){
@@ -210,10 +209,11 @@ void execute(char **argv){
 	pid_t pid;
 	int status;
 	
+	/*
 	std::string input = std::string(*argv);
-	//std::cout << "String: " << input << std::endl;
+	std::cout << "String: " << input << std::endl;
 	input.erase(std::remove(input.begin(), input.end(), ' '), input.end());
-	//std::cout << "String: " << input << std::endl;
+	std::cout << "String: " << input << std::endl;
 	std::string delimiter = "|";
 	std::string tokenBefore = input.substr(0,input.find(delimiter));
 	std::string tokenAfter = input.substr(input.find(delimiter)+1, input.length());
@@ -221,19 +221,35 @@ void execute(char **argv){
 	std::cout << "TokenB: " << tokenBefore << std::endl;
 	std::cout << "TokenA: " << tokenAfter << std::endl;
 	return;
-	if ((pid = fork()) < 0) { 
-		std::cout << "*** ERROR: forking child process failed\n";			
-		exit(1);
-	}
-        else if (pid == 0) {        
-		if (execvp(*argv, argv) < 0) {
-			std::cout <<"ERROR: Invalid Input, Command not recognized\n";
+	std::cout << *argv << std::endl;
+	*/
+	//if (input.find(delimiter) > input.length()){
+		/*
+		std::string delimiter = " ";
+		std::string tokenBefore = input.substr(0,input.find(delimiter));
+		std::string tokenAfter = input.substr(input.find(delimiter)+1, input.length());
+		const char *cmd = tokenBefore.c_str();
+		const char *args[3];
+		args[0] = tokenBefore.c_str();
+		args[1] = tokenAfter.c_str();
+		args[2] = NULL;
+		*/
+		if ((pid = fork()) < 0) { 
+			std::cout << "ERROR: forking child process failed\n";			
 			exit(1);
 		}
-	}
-	else { 
-		wait(&status);
-	}
+        	else if (pid == 0) {        
+			if (execvp(*argv, argv) < 0) {
+				std::cout << strerror(errno) << std::endl;
+				exit(1);
+			}
+		}
+		else { 
+			wait(&status);
+		}
+	//}
+	//else 
+	//	std::cout << "piping\n";
 }
 
 int getdir (std::string dir, std::vector<std::string> &files){
