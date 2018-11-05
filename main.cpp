@@ -6,6 +6,7 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <cstring>
 #include <sys/types.h>
 #include <sys/dir.h>
 #include <sys/param.h>
@@ -20,7 +21,7 @@
 
 
 void  parse(std::string string, char **argv);
-void execute(char **argv);
+void execute(char **argv, std::vector<std::string> arguments);
 int getdir (std::string dir, std::vector<std::string> &files);
 std::vector<std::string> split (const std::string &s, char delim);
 void signalHandler(int signum __attribute__((unused)));
@@ -62,8 +63,6 @@ theInput:
 		history.push_back(input);
 		char *charinput[input.length()+1];
 		parse(input, charinput);
-		char *charinputFull = new char[input.length()+1];
-		strcpy(charinputFull, input.c_str());
 		auto before = std::chrono::high_resolution_clock::now();
 		
 /******************EXITING******************************/
@@ -74,6 +73,10 @@ theInput:
 
 		char delim = ' ';
 		arguments = split(input, delim);
+		/*for (auto a:arguments)
+			std::cout << a << " ";
+		std::cout <<std::endl;
+		*/
         	if (input == "ptime"){
 			std::cout << "Time spent executing child processes: "<< dur.count() 
 				<<" seconds\n";
@@ -179,17 +182,16 @@ theInput:
 
 		}
 		else { 
-			execute(charinput);
+			execute(charinput, arguments);
 		}
 		auto after = std::chrono::high_resolution_clock::now();
 		dur = after - before;
-		delete charinputFull;
 	}
 	return 0;
 }
 
-void signalHandler( int signum __attribute__((unused))) {
-	std::cout << "\nERROR: Exit with keyword \"exit\"\n";
+void signalHandler(int signum __attribute__((unused))) {
+	//std::cout << "\nERROR: Exit with keyword \"exit\"\n" << "[" << getcwd(NULL, 0) << "]: ";
 }
 
 void  parse(std::string string, char **argv){
@@ -205,15 +207,32 @@ void  parse(std::string string, char **argv){
         *argv = '\0'; 
 }
 
-void execute(char **argv){
+char *convert(const std::string & s){
+	char *pc = new char[s.size()+1];
+	std::strcpy(pc, s.c_str());
+	return pc; 
+}
+
+void execute(char **argv, std::vector<std::string> arguments){
 	pid_t pid;
 	int status;
+	const int READ = 0;
+	const int WRITE = 1;
 	
+	std::string input;
 	/*
-	std::string input = std::string(*argv);
+	for (int i=0; i!=sizeof(argv); i++)
+		if(argv[i])
+		{
+			input.append(std::string(argv[i]) + " ");
+			std::cout << std::string(argv[i]);
+		}
+	std::cout << std::endl;
+	
 	std::cout << "String: " << input << std::endl;
 	input.erase(std::remove(input.begin(), input.end(), ' '), input.end());
 	std::cout << "String: " << input << std::endl;
+	
 	std::string delimiter = "|";
 	std::string tokenBefore = input.substr(0,input.find(delimiter));
 	std::string tokenAfter = input.substr(input.find(delimiter)+1, input.length());
@@ -234,6 +253,10 @@ void execute(char **argv){
 		args[1] = tokenAfter.c_str();
 		args[2] = NULL;
 		*/
+	unsigned int len = std::distance(arguments.begin(), std::find(arguments.begin(), 
+				arguments.end(), "|"));
+	std::cout << len << ":"<< arguments.size()<<std::endl;
+	if(len == arguments.size()){
 		if ((pid = fork()) < 0) { 
 			std::cout << "ERROR: forking child process failed\n";			
 			exit(1);
@@ -247,9 +270,89 @@ void execute(char **argv){
 		else { 
 			wait(&status);
 		}
-	//}
-	//else 
-	//	std::cout << "piping\n";
+	}
+	else{
+		std::cout << "piping\n";
+		/*
+		std::string delimiter = "|";
+		std::string tokenBefore = input.substr(0,input.find(delimiter)-1);
+		std::string tokenAfter = input.substr(input.find(delimiter)+2, input.length());
+		std::cout << "String: " << input << std::endl;
+		std::cout << "TokenB: " << tokenBefore << std::endl;
+		std::cout << "TokenA: " << tokenAfter << std::endl;
+		std::cout.flush();
+		*/
+		std::string tokenBefore = "";
+		std::string tokenAfter = "";
+		int i=0;
+		for(int j=0;j!=2;j++){
+		while (true){
+			if(i==len)
+				break;
+			std::string temp = arguments[i];
+			arguments.erase(arguments.begin()+i);
+			if (temp != "|")
+				tokenBefore+=temp;
+			else
+				break;
+			tokenBefore+=" ";
+			i++;
+		}
+		std::cout << "TokenB: " << tokenBefore << std::endl;
+		}
+		return;
+		char **first = (char**)tokenBefore.c_str();
+		char **second = (char**)tokenAfter.c_str();
+
+		int p[2];
+		if (pipe(p) !=0) {
+			std::cerr << "pipe() failed because: " << strerror(errno) << std::endl;
+			return;
+		}
+		/*first*/
+		pid_t cat = fork();
+		if (cat == 0) {
+			close(p[READ]);
+			dup2(p[WRITE], STDOUT_FILENO);
+			//execlp((char*)"echo", (char*)"echo", (char*)"hello world", (char*)NULL);
+			if (execvp(*first, first) < 0)
+				std::cout << strerror(errno) << std::endl;
+			std::cerr << "Failed to exec '"<<*first<<"' because " 
+				<< strerror(errno) << std::endl;
+			return;
+		}
+		/*second*/
+		pid_t tr = fork();
+    		if (tr == 0) {
+	        	close(p[WRITE]);
+		        dup2(p[READ], STDIN_FILENO);
+			//execlp((char*)"wc", (char*)"wc", (char*)NULL);
+			if (execvp(*second, second) < 0)
+				std::cout << strerror(errno) <<std::endl;
+			std::cerr << "Failed to exec '"<<*second<<"' because " 
+				<< strerror(errno) << std::endl;
+			return;
+		}
+		close(p[READ]);
+		close(p[WRITE]);
+
+		std::cerr << "[Parent process]: wait for children to finish...\n";
+		int wstatus;
+		for (int i = 0; i < 2; ++i) {
+			pid_t kiddo = wait(&wstatus);
+			
+		        if (kiddo == cat) {
+				std::cerr << "The `cat` process terminated with status "
+				       	<< WEXITSTATUS(wstatus) << std::endl;
+			}
+			else if (kiddo == tr) {
+			std::cerr << "The `tr` process terminated with status " 
+				<< WEXITSTATUS(wstatus) << std::endl;
+			}
+			
+		}
+	}
+	std::cout.flush();
 }
 
 int getdir (std::string dir, std::vector<std::string> &files){
