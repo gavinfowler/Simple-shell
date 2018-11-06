@@ -27,7 +27,7 @@ std::vector<std::string> split (const std::string &s, char delim);
 void signalHandler(int signum __attribute__((unused)));
 
 int main(void){
-	signal(SIGINT, signalHandler);
+	//signal(SIGINT, signalHandler);
 	/*stuff for living time*/
 	struct timeval tv[2]; //need for when started program and when checking difference
 	gettimeofday (&tv[0], NULL);
@@ -194,7 +194,7 @@ void signalHandler(int signum __attribute__((unused))) {
 	//std::cout << "\nERROR: Exit with keyword \"exit\"\n" << "[" << getcwd(NULL, 0) << "]: ";
 }
 
-void  parse(std::string string, char **argv){
+void parse(std::string string, char **argv){
 	char *line = new char[string.length()+1];
 	strcpy(line, string.c_str());
 	while (*line != '\0') {
@@ -280,57 +280,97 @@ void execute(char **argv, std::vector<std::string> arguments){
 		std::cout << "String: " << input << std::endl;
 		std::cout << "TokenB: " << tokenBefore << std::endl;
 		std::cout << "TokenA: " << tokenAfter << std::endl;
-		std::cout.flush();
-		*/
+
+		
 		std::string tokenBefore = "";
 		std::string tokenAfter = "";
+		std::string temporary;
+		char* first1[arguments.size()+1];
+		char *second1[arguments.size()+1];
 		int i=0;
-		for(int j=0;j!=2;j++){
-		while (true){
-			if(i==len)
-				break;
-			std::string temp = arguments[i];
-			arguments.erase(arguments.begin()+i);
-			if (temp != "|")
-				tokenBefore+=temp;
+		for(int j=0;j<2;j++){
+			i=0;
+			temporary="";
+			while (true){
+				if(arguments.size()==0)
+					break;
+				std::string temp = arguments[0];
+				arguments.erase(arguments.begin());
+				if (temp != "|"){
+					temporary+=temp;
+					if(j==0)
+						std::copy(temp.begin(), temp.end(), first1[i]);
+					//first1[i]=temp.c_str();
+					//else
+					//	second1[i]=temp.c_str();
+				}
+				else
+					break;
+				temporary+=" ";
+				i++;
+			}
+			if(j==0)
+				first1[i]='\0';
 			else
+				second1[i]='\0';
+			if (j==0)
+				tokenBefore=temporary;
+			else 
+				tokenAfter=temporary;
+		
+		}
+		for (int i=0;i<sizeof(first1);i++){
+			if(first1[i]=='\0')
 				break;
-			tokenBefore+=" ";
-			i++;
+			std::cout << first1[i] <<std::endl;
 		}
-		std::cout << "TokenB: " << tokenBefore << std::endl;
+		for (int i=0;i<sizeof(second1);i++){
+			if(second1[i]=='\0')
+				break;
+			std::cout << second1[i] <<std::endl;
 		}
-		return;
-		char **first = (char**)tokenBefore.c_str();
-		char **second = (char**)tokenAfter.c_str();
 
+		char *first[tokenBefore.length()+1];	
+		parse(tokenBefore, first);
+		char *second[tokenAfter.length()+1];
+		parse(tokenAfter, second);
+		*/
+		std::vector<char*> first1;
+		std::vector<char*> second1;
+		std::transform(arguments.begin(), std::find(arguments.begin(), arguments.end(), "|"),
+			       	std::back_inserter(first1), convert);
+		first1.push_back('\0');
+		second1.push_back('\0');
+		std::transform(std::find(arguments.begin(), arguments.end(), "|")+1, arguments.end(),
+			       	std::back_inserter(second1), convert);
+		for ( size_t i = 0 ; i < second1.size() ; i++ )
+			            std::cout << second1[i] << std::endl;
+	
+		char *first[] = {(char*)"echo", (char*)"hello", (char*)"world", (char*)NULL};
+		char *second[] = {(char*)"wc", (char*)NULL};
 		int p[2];
 		if (pipe(p) !=0) {
 			std::cerr << "pipe() failed because: " << strerror(errno) << std::endl;
 			return;
 		}
-		/*first*/
+		//first
 		pid_t cat = fork();
 		if (cat == 0) {
 			close(p[READ]);
 			dup2(p[WRITE], STDOUT_FILENO);
 			//execlp((char*)"echo", (char*)"echo", (char*)"hello world", (char*)NULL);
-			if (execvp(*first, first) < 0)
-				std::cout << strerror(errno) << std::endl;
-			std::cerr << "Failed to exec '"<<*first<<"' because " 
-				<< strerror(errno) << std::endl;
+			execvp(first1[0],&first1[0]);
+			std::cerr << "Failed to exec1 because " << strerror(errno) << std::endl;
 			return;
 		}
-		/*second*/
+		//second
 		pid_t tr = fork();
     		if (tr == 0) {
 	        	close(p[WRITE]);
 		        dup2(p[READ], STDIN_FILENO);
 			//execlp((char*)"wc", (char*)"wc", (char*)NULL);
-			if (execvp(*second, second) < 0)
-				std::cout << strerror(errno) <<std::endl;
-			std::cerr << "Failed to exec '"<<*second<<"' because " 
-				<< strerror(errno) << std::endl;
+			execvp(second1[0], &second1[0]);
+			std::cerr << "Failed to exec2 because " << strerror(errno) << std::endl;
 			return;
 		}
 		close(p[READ]);
@@ -342,17 +382,22 @@ void execute(char **argv, std::vector<std::string> arguments){
 			pid_t kiddo = wait(&wstatus);
 			
 		        if (kiddo == cat) {
-				std::cerr << "The `cat` process terminated with status "
+				std::cerr << "The first process terminated with status "
 				       	<< WEXITSTATUS(wstatus) << std::endl;
 			}
 			else if (kiddo == tr) {
-			std::cerr << "The `tr` process terminated with status " 
+			std::cerr << "The second process terminated with status " 
 				<< WEXITSTATUS(wstatus) << std::endl;
 			}
 			
 		}
-	}
-	std::cout.flush();
+		std::cerr << "here1\n";
+		first1.clear();
+		second1.clear();
+		std::cerr << "here2\n";
+	}	
+	std::cerr << "here3\n";
+	return;
 }
 
 int getdir (std::string dir, std::vector<std::string> &files){
