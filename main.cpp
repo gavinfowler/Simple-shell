@@ -27,7 +27,7 @@ std::vector<std::string> split (const std::string &s, char delim);
 void signalHandler(int signum __attribute__((unused)));
 
 int main(void){
-	//signal(SIGINT, signalHandler);
+	signal(SIGINT, signalHandler);
 	/*stuff for living time*/
 	struct timeval tv[2]; //need for when started program and when checking difference
 	gettimeofday (&tv[0], NULL);
@@ -52,7 +52,7 @@ int main(void){
 retry:
 /******************JUMPS TO HERE******************************/
 
-		std::cout << "[" << getcwd(NULL, 0) << "]: ";
+		std::cerr << "[" << getcwd(NULL, 0) << "]: ";
 		std::getline (std::cin, input);
 		counter = 0;
 		
@@ -186,6 +186,7 @@ theInput:
 		}
 		auto after = std::chrono::high_resolution_clock::now();
 		dur = after - before;
+		
 	}
 	return 0;
 }
@@ -217,45 +218,9 @@ void execute(char **argv, std::vector<std::string> arguments){
 	pid_t pid;
 	int status;
 	const int READ = 0;
-	const int WRITE = 1;
-	
-	std::string input;
-	/*
-	for (int i=0; i!=sizeof(argv); i++)
-		if(argv[i])
-		{
-			input.append(std::string(argv[i]) + " ");
-			std::cout << std::string(argv[i]);
-		}
-	std::cout << std::endl;
-	
-	std::cout << "String: " << input << std::endl;
-	input.erase(std::remove(input.begin(), input.end(), ' '), input.end());
-	std::cout << "String: " << input << std::endl;
-	
-	std::string delimiter = "|";
-	std::string tokenBefore = input.substr(0,input.find(delimiter));
-	std::string tokenAfter = input.substr(input.find(delimiter)+1, input.length());
-	std::cout << "String: " << input << std::endl;
-	std::cout << "TokenB: " << tokenBefore << std::endl;
-	std::cout << "TokenA: " << tokenAfter << std::endl;
-	return;
-	std::cout << *argv << std::endl;
-	*/
-	//if (input.find(delimiter) > input.length()){
-		/*
-		std::string delimiter = " ";
-		std::string tokenBefore = input.substr(0,input.find(delimiter));
-		std::string tokenAfter = input.substr(input.find(delimiter)+1, input.length());
-		const char *cmd = tokenBefore.c_str();
-		const char *args[3];
-		args[0] = tokenBefore.c_str();
-		args[1] = tokenAfter.c_str();
-		args[2] = NULL;
-		*/
+	const int WRITE = 1;	
 	unsigned int len = std::distance(arguments.begin(), std::find(arguments.begin(), 
 				arguments.end(), "|"));
-	std::cout << len << ":"<< arguments.size()<<std::endl;
 	if(len == arguments.size()){
 		if ((pid = fork()) < 0) { 
 			std::cout << "ERROR: forking child process failed\n";			
@@ -272,82 +237,17 @@ void execute(char **argv, std::vector<std::string> arguments){
 		}
 	}
 	else{
-		std::cout << "piping\n";
-		/*
-		std::string delimiter = "|";
-		std::string tokenBefore = input.substr(0,input.find(delimiter)-1);
-		std::string tokenAfter = input.substr(input.find(delimiter)+2, input.length());
-		std::cout << "String: " << input << std::endl;
-		std::cout << "TokenB: " << tokenBefore << std::endl;
-		std::cout << "TokenA: " << tokenAfter << std::endl;
-
-		
-		std::string tokenBefore = "";
-		std::string tokenAfter = "";
-		std::string temporary;
-		char* first1[arguments.size()+1];
-		char *second1[arguments.size()+1];
-		int i=0;
-		for(int j=0;j<2;j++){
-			i=0;
-			temporary="";
-			while (true){
-				if(arguments.size()==0)
-					break;
-				std::string temp = arguments[0];
-				arguments.erase(arguments.begin());
-				if (temp != "|"){
-					temporary+=temp;
-					if(j==0)
-						std::copy(temp.begin(), temp.end(), first1[i]);
-					//first1[i]=temp.c_str();
-					//else
-					//	second1[i]=temp.c_str();
-				}
-				else
-					break;
-				temporary+=" ";
-				i++;
-			}
-			if(j==0)
-				first1[i]='\0';
-			else
-				second1[i]='\0';
-			if (j==0)
-				tokenBefore=temporary;
-			else 
-				tokenAfter=temporary;
-		
-		}
-		for (int i=0;i<sizeof(first1);i++){
-			if(first1[i]=='\0')
-				break;
-			std::cout << first1[i] <<std::endl;
-		}
-		for (int i=0;i<sizeof(second1);i++){
-			if(second1[i]=='\0')
-				break;
-			std::cout << second1[i] <<std::endl;
-		}
-
-		char *first[tokenBefore.length()+1];	
-		parse(tokenBefore, first);
-		char *second[tokenAfter.length()+1];
-		parse(tokenAfter, second);
-		*/
 		std::vector<char*> first1;
 		std::vector<char*> second1;
 		std::transform(arguments.begin(), std::find(arguments.begin(), arguments.end(), "|"),
 			       	std::back_inserter(first1), convert);
 		first1.push_back('\0');
-		second1.push_back('\0');
 		std::transform(std::find(arguments.begin(), arguments.end(), "|")+1, arguments.end(),
 			       	std::back_inserter(second1), convert);
-		for ( size_t i = 0 ; i < second1.size() ; i++ )
-			            std::cout << second1[i] << std::endl;
+		second1.push_back('\0');
 	
-		char *first[] = {(char*)"echo", (char*)"hello", (char*)"world", (char*)NULL};
-		char *second[] = {(char*)"wc", (char*)NULL};
+		//char *first[] = {(char*)"echo", (char*)"hello", (char*)"world", (char*)NULL};
+		//char *second[] = {(char*)"wc", (char*)NULL};
 		int p[2];
 		if (pipe(p) !=0) {
 			std::cerr << "pipe() failed because: " << strerror(errno) << std::endl;
@@ -376,27 +276,23 @@ void execute(char **argv, std::vector<std::string> arguments){
 		close(p[READ]);
 		close(p[WRITE]);
 
-		std::cerr << "[Parent process]: wait for children to finish...\n";
+		//std::cerr << "[Parent process]: wait for children to finish...\n";
 		int wstatus;
 		for (int i = 0; i < 2; ++i) {
-			pid_t kiddo = wait(&wstatus);
-			
+			//pid_t kiddo = wait(&wstatus);
+			wait(&wstatus);
+			/*
 		        if (kiddo == cat) {
 				std::cerr << "The first process terminated with status "
-				       	<< WEXITSTATUS(wstatus) << std::endl;
+				    	<< WEXITSTATUS(wstatus) << std::endl;
 			}
 			else if (kiddo == tr) {
-			std::cerr << "The second process terminated with status " 
-				<< WEXITSTATUS(wstatus) << std::endl;
+				std::cerr << "The second process terminated with status " 
+					<< WEXITSTATUS(wstatus) << std::endl;
 			}
-			
+			*/
 		}
-		std::cerr << "here1\n";
-		first1.clear();
-		second1.clear();
-		std::cerr << "here2\n";
 	}	
-	std::cerr << "here3\n";
 	return;
 }
 
