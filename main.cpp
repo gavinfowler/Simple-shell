@@ -183,6 +183,7 @@ theInput:
 		}
 		else { 
 			execute(charinput, arguments);
+			std::cout << "here\n";
 		}
 		auto after = std::chrono::high_resolution_clock::now();
 		dur = after - before;
@@ -215,14 +216,10 @@ char *convert(const std::string & s){
 }
 
 struct command{
-	const char **argv;
-	command& operator=(std::vector<char*> a){
-		argv = const_cast<const char**>(&a[0]);
-	}
-
+	  const char **argv;
 };
 
-int spawn_proc (int in, int out, command *cmd){
+int spawn_proc (int in, int out, std::vector<char*> cmd){
 	pid_t pid;
 	if ((pid = fork ()) == 0){
 		if (in != 0){
@@ -233,16 +230,18 @@ int spawn_proc (int in, int out, command *cmd){
 			dup2 (out, 1);
 			close (out);
 		}
-	        return execvp (cmd->argv [0], (char * const *)cmd->argv);
+	        if(execvp (cmd[0], &cmd[0])<0){
+			std::cerr << strerror(errno)<<std::endl;
+			exit(1);
+		}
+		return -1;
         }
 	return pid;
 }
 
-int
-fork_pipes (int n, struct command *cmd)
-{
+int fork_pipes (int n, std::vector<std::vector<char*>> cmd){
 	int i;
-	pid_t pid;
+	//pid_t pid;
 	int in, fd [2];
         /* The first process should get its input from the original file descriptor 0.  */
         in = 0;
@@ -250,7 +249,8 @@ fork_pipes (int n, struct command *cmd)
       	for (i = 0; i < n - 1; ++i){
 		pipe (fd);
                 /* f [1] is the write end of the pipe, we carry `in` from the prev iteration.  */
-                spawn_proc (in, fd [1], cmd + i);
+		std::cerr << i << std::endl;
+                spawn_proc (in, fd [1], cmd[i]);
  	        /* No need for the write end of the pipe, the child will write here.  */
 	        close (fd [1]);
                 /* Keep the read end of the pipe, the next child will read from there.  */
@@ -261,7 +261,13 @@ fork_pipes (int n, struct command *cmd)
 	if (in != 0)
 		dup2 (in, 0);
 	/* Execute the last stage with the current process. */
-	return execvp (cmd [i].argv [0], (char * const *)cmd [i].argv);
+	std::vector<char*> argv = cmd[i];
+	std::cerr << i << std::endl;
+	if (execvp (argv[0], &argv[0])<0){
+		std::cerr << strerror(errno)<<std::endl;
+		exit(1);
+	}
+	return 0;
 }
 
 
@@ -272,6 +278,7 @@ void execute(char **argv, std::vector<std::string> arguments){
 	const int WRITE = 1;	
 	unsigned int len = std::distance(arguments.begin(), std::find(arguments.begin(), 
 				arguments.end(), "|"));
+	std::cout << "len: " << len << std::endl;
 	if(len == arguments.size()){
 		if ((pid = fork()) < 0) { 
 			std::cout << "ERROR: forking child process failed\n";			
@@ -289,25 +296,38 @@ void execute(char **argv, std::vector<std::string> arguments){
 	}
 	else{
 		std::vector<std::vector<char*>> cmd;
-		std::cout << sizeof(*argv)/sizeof(**argv) <<std::endl;
 		//struct command cmd [arguments.size()+1];
 		std::vector<char*> first1;
 		int i = 0;
 		std::cout << "prewhileloop\n";
-		while(arguments.size()>0){
+		std::cout << std::distance(arguments.begin(), std::find(arguments.begin(), 
+				arguments.end(), "|"))<<std::endl;
+		while(true){
+			first1.clear();
 			std::transform(arguments.begin(), std::find(arguments.begin(),
 				arguments.end(), "|"), std::back_inserter(first1), convert);
-			std::cout << arguments.size() <<std::endl;
+			std::cout << "size: " << arguments.size() <<std::endl;
+			first1.push_back((char*)NULL);
 			cmd.push_back(first1);
-			std::cout << i <<std::endl;
+			std::cout << "i: "<< i <<std::endl;
 			i++;
-			if (std::distance(arguments.begin(), arguments.erase(arguments.begin(), 
-				std::find(arguments.begin(), arguments.end(), "|"))) == 0)
-				break;
-			std::cout << first1.size() <<std::endl;
+			arguments.erase(arguments.begin(),
+				std::find(arguments.begin(), arguments.end(), "|"));
+			std::cout << "distance: " << std::distance(arguments.begin(), 
+				std::find(arguments.begin(), arguments.end(), "|")) << std::endl;
+			if (std::distance(arguments.begin(), std::find(arguments.begin(), 
+				arguments.end(), "|")) == 0){
+				if(arguments.size() != 0)
+					arguments.erase(arguments.begin());
+				else
+					break;
+			}
+			//std::cout << first1.size() <<std::endl;
 		}
-		std::cout << "prepiping\n";
-		//int k = fork_pipes(3, cmd);
+		std::cout << "prepiping\n" << "size: " << cmd.size()<<std::endl;
+		for (auto a:cmd)
+			std::cerr << a[0] << std::endl;
+		fork_pipes(cmd.size(), cmd);
 		return;
 		
 
